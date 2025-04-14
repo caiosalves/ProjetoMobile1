@@ -1,13 +1,36 @@
 <ion-header>
-  <ion-toolbar>
+  <ion-toolbar color="primary">
     <ion-title>Onde estou?</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  <ion-button expand="block" (click)="obterLocalizacao()">
-    Obter Localização
-  </ion-button>
+<ion-content class="ion-padding">
+  <div class="content-wrapper">
+    <ion-button 
+      expand="block" 
+      (click)="obterLocalizacao()"
+      class="location-button"
+      shape="round">
+      <ion-icon slot="start" name="locate-outline"></ion-icon>
+      Obter Localização
+    </ion-button>
 
-  <div id="map" #map></div>
+    <ion-card *ngIf="coordenadas" class="coordinates-card">
+      <ion-card-header>
+        <ion-card-title>Coordenadas Atuais</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list lines="none">
+          <ion-item>
+            <ion-label>Latitude: {{coordenadas.latitude}}</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>Longitude: {{coordenadas.longitude}}</ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <div id="map" #map class="map-container"></div>
+  </div>
 </ion-content>

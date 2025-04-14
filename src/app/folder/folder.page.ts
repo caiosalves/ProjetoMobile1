@@ -1,5 +1,5 @@
 import { Component, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
-import { ViewDidEnter } from '@ionic/angular';
+import { ViewDidEnter, LoadingController, AlertController } from '@ionic/angular';
 import * as L from 'leaflet';
 import { Geolocation, Position } from '@capacitor/geolocation';
 
@@ -14,29 +14,26 @@ export class FolderPage implements AfterViewInit, ViewDidEnter {
 
   map!: L.Map;
   marker!: L.Marker;
+  coordenadas: { latitude: number; longitude: number } | null = null;
+  loading = false;
 
-  constructor() {}
+  constructor(
+    private loadingCtrl: LoadingController,
+    private alertCtrl: AlertController
+  ) {}
 
-  // Após a view ser iniciada (div #map disponível), criamos o mapa
   ngAfterViewInit() {
-    this.fixLeafletIcons(); 
+    this.fixLeafletIcons();
     this.initMap();
   }
 
-  // Assim que a página Ionic terminar de entrar na tela, chamamos invalidateSize()
   ionViewDidEnter() {
     setTimeout(() => {
-      if (this.map) {
-        this.map.invalidateSize();
-      }
+      this.map?.invalidateSize();
     }, 200);
   }
 
-  /**
-   * Ajusta o path dos ícones padrão do Leaflet para usar os arquivos em /assets
-   * (Somente se você copiou marker-icon.png etc. para src/assets)
-   */
-  fixLeafletIcons() {
+  private fixLeafletIcons() {
     delete (L.Icon.Default.prototype as any)._getIconUrl;
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: 'assets/marker-icon-2x.png',
@@ -45,12 +42,8 @@ export class FolderPage implements AfterViewInit, ViewDidEnter {
     });
   }
 
-  /**
-   * Cria a instância do mapa
-   */
-  initMap() {
-    const initialCoords: L.LatLngExpression = [-15.8, -47.9]; // Ex.: Brasil
-
+  private initMap() {
+    const initialCoords: L.LatLngExpression = [-15.8, -47.9]; // Coordenadas iniciais
     this.map = L.map(this.mapElement.nativeElement, {
       center: initialCoords,
       zoom: 4,
@@ -60,30 +53,45 @@ export class FolderPage implements AfterViewInit, ViewDidEnter {
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(this.map);
 
-    // Marcador inicial (opcional)
     this.marker = L.marker(initialCoords).addTo(this.map);
   }
 
-  /**
-   * Obtém a localização do usuário via Capacitor e centraliza no mapa
-   */
   async obterLocalizacao() {
+    const loading = await this.loadingCtrl.create({
+      message: 'Obtendo localização...',
+      spinner: 'crescent'
+    });
+
     try {
+      this.loading = true;
+      await loading.present();
+
       const position: Position = await Geolocation.getCurrentPosition();
       const { latitude, longitude } = position.coords;
-
-      console.log('Coordenadas do usuário:', latitude, longitude);
-
+      
+      // Atualiza as coordenadas para exibição
+      this.coordenadas = { latitude, longitude };
+      
+      // Atualiza o mapa
       const userLatLng = L.latLng(latitude, longitude);
       this.map.setView(userLatLng, 15);
+      this.marker.setLatLng(userLatLng);
 
-      if (this.marker) {
-        this.marker.setLatLng(userLatLng);
-      } else {
-        this.marker = L.marker(userLatLng).addTo(this.map);
-      }
     } catch (error) {
       console.error('Erro ao obter localização:', error);
+      await this.showErrorAlert();
+    } finally {
+      this.loading = false;
+      await loading.dismiss();
     }
+  }
+
+  private async showErrorAlert() {
+    const alert = await this.alertCtrl.create({
+      header: 'Erro',
+      message: 'Não foi possível obter a localização. Verifique as permissões do aplicativo.',
+      buttons: ['OK']
+    });
+    await alert.present();
   }
 }
